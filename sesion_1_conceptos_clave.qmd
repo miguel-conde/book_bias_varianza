@@ -1,0 +1,253 @@
+## Objetivos de aprendizaje
+
+Al terminar esta sesión podrás:
+
+1. Explicar de forma intuitiva la descomposición del **error esperado** en **irreductible**, **sesgo** y **varianza**.
+2. Reconocer visualmente los efectos de la complejidad del modelo sobre sesgo y varianza.
+3. Generar un conjunto de datos sintéticos y entrenar polinomios de distintos grados en **scikit‑learn**.
+4. Utilizar una animación 2D para ilustrar el *trade‑off* sesgo‑varianza.
+
+---
+
+## Error esperado y desglose
+
+Para cualquier modelo $\hat{f}(X)$ que intenta predecir una variable respuesta $Y$, el **error cuadrático medio esperado** se expresa como:
+
+$$
+\operatorname{E}_\text{train,test}\bigl[(Y-\hat{f}(X))^2\bigr]
+\;=\; \sigma^2 \; + \; \underbrace{\bigl(\operatorname{E}[\hat{f}(X)] - f^{*}(X)\bigr)^2}_{\text{Sesgo}^2}\; + \; \underbrace{\operatorname{Var}[\hat{f}(X)]}_{\text{Varianza}},
+$$
+
+donde
+
+* **$\sigma^2$** es el **error irreductible**: ruido inherente a la generación de los datos que ningún modelo puede eliminar.
+* **Sesgo** cuantifica cuán lejos está la **predicción promedio** del modelo respecto a la *verdadera* función $f^{*}$.
+* **Varianza** mide la sensibilidad del modelo a distintas muestras de entrenamiento.
+
+### ¿Qué es *la predicción promedio* del modelo?
+
+La expresión $\operatorname{E}[\hat{f}(X)]$ **no** se refiere a promediar las predicciones sobre las filas de un mismo conjunto de entrenamiento.  El promedio se toma **sobre muchos modelos** entrenados con **muestras de entrenamiento diferentes**, todas extraídas de la misma distribución subyacente (la que genera los datos mediante $f^{*}(X)+\varepsilon$):
+
+1. Obtenemos $B$ conjuntos de entrenamiento $\mathcal{D}_1,\dots,\mathcal{D}_B$ mediante *bootstrap* o con nuevas observaciones.
+2. Entrenamos $B$ modelos independientes: $\hat{f}^{(1)},\dots,\hat{f}^{(B)}$.
+3. Para un punto $x_0$, calculamos las $B$ predicciones $\hat{f}^{(b)}(x_0)$.
+4. La **predicción promedio** se aproxima por
+
+   $$
+   \operatorname{E}[\hat{f}(x_0)] \approx \frac{1}{B}\sum_{b=1}^{B} \hat{f}^{(b)}(x_0).
+   $$
+5. La **varianza del modelo** en $x_0$ es la dispersión de esos $B$ valores.
+
+Esto explica por qué un modelo muy flexible puede exhibir **varianza alta**: pequeñas perturbaciones en los datos provocan grandes cambios en la curva ajustada.
+
+> *Regla mnemotécnica*: **sesgo** compara la *media* de los modelos con la verdad; **varianza** mide la *dispersión* entre modelos.
+
+> **Idea central**: incrementar la complejidad del modelo suele **reducir sesgo** pero **aumentar varianza**. El arte consiste en equilibrar ambos componentes.
+
+---
+
+## Ejemplo práctico con *m* datasets
+
+Una forma tangible de ver **sesgo** y **varianza** consiste en entrenar varios modelos sobre **datasets de entrenamiento ligeramente distintos** y comparar sus predicciones sobre un mismo conjunto de puntos.
+
+A continuación generamos **10** conjuntos sintéticos a partir de la misma distribución subyacente, entrenamos un polinomio cúbico en cada uno y calculamos las tres componentes del error en una malla de valores de $X$.
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+
+rng = np.random.default_rng(0)
+
+# Verdadera función cúbica
+f_star = lambda x: 1.2 * x**3 - 4 * x + 6
+sigma = 1.5  # desviación estándar del ruido irreductible
+
+#--- Paso 1: generar m datasets y entrenar m modelos -------------------------
+B = 10          # número de datasets/modelos
+n = 50          # observaciones por dataset
+degree = 3      # complejidad del modelo
+models = []
+for _ in range(B):
+    X_b = rng.uniform(-3, 3, size=n).reshape(-1, 1)
+    y_b = f_star(X_b.squeeze()) + rng.normal(scale=sigma, size=n)
+    model = make_pipeline(PolynomialFeatures(degree), LinearRegression())
+    model.fit(X_b, y_b)
+    models.append(model)
+
+#--- Paso 2: predicciones sobre una rejilla común ---------------------------
+X_grid = np.linspace(-3, 3, 100).reshape(-1, 1)
+y_true_grid = f_star(X_grid.squeeze())
+
+# Matriz shape = (B, n_grid)
+y_preds = np.array([m.predict(X_grid) for m in models])
+
+#--- Paso 3: estimar componentes del error ----------------------------------
+E_hat_f = y_preds.mean(axis=0)        # predicción promedio
+Bias2 = (E_hat_f - y_true_grid) ** 2
+Var = y_preds.var(axis=0)             # varianza entre modelos
+Irreductible = sigma ** 2             # constante
+
+#--- Paso 4: visualización ---------------------------------------------------
+plt.figure(figsize=(7, 4))
+for i in range(B):
+    plt.plot(X_grid, y_preds[i], color="gray", alpha=0.4)
+plt.plot(X_grid, E_hat_f, label="Media de modelos", linewidth=2)
+plt.plot(X_grid, y_true_grid, label="f* verdadera", linestyle=":", linewidth=2)
+plt.legend(); plt.title("Predicciones de 10 modelos vs. f* verdadera")
+plt.xlabel("X"); plt.ylabel("y")
+plt.tight_layout()
+plt.show()
+
+#--- Error medio global ------------------------------------------------------
+print("\nComponentes promedio en la rejilla:")
+print(f"Bias^2 medio     : {Bias2.mean():.3f}")
+print(f"Varianza media   : {Var.mean():.3f}")
+print(f"Irreductible     : {Irreductible:.3f}")
+print(f"MSE estimado     : {(Bias2 + Var + Irreductible).mean():.3f}")
+```
+
+### Qué observar
+
+* **Curvas grises**: las 10 realizaciones de la predicción $\hat{f}^{(b)}(X)$ oscilan alrededor de la curva real.
+* La **línea azul** (media de modelos) muestra el sesgo: si está alejada de la función verdadera, el sesgo es grande.
+* La **dispersión** de las curvas grises en torno a la línea azul refleja la varianza.
+* El **ruido irreductible** es constante ($\sigma^2 = 2.25$) y no se ve en la gráfica pero sí en la estimación de error.
+
+> Con más datasets ($B$ grande) o muestras por dataset ($n$), la estimación del sesgo² y la varianza se vuelve más estable.
+
+---
+
+## Datos sintéticos y polinomios 1‑5
+
+El siguiente bloque genera un dataset 2D sencillo y ajusta polinomios de grado 1 a 5.  Cada modelo se entrena con la misma muestra para que la diferencia visual se deba sólo a la complejidad.
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+
+# Semilla para reproducibilidad
+n_rng = np.random.default_rng(42)
+X = np.linspace(-3, 3, 50).reshape(-1, 1)
+noise = 1.5 * n_rng.standard_normal(size=X.shape[0])
+# Verdadera función subyacente (cúbica)
+y_true = 1.2 * X.squeeze()**3 - 4 * X.squeeze() + 6
+y = y_true + noise
+
+# Configurar grados de polinomio que vamos a mostrar
+degrees = range(1, 6)
+plt.figure(figsize=(6, 4))
+plt.scatter(X, y, label="datos", alpha=.7)
+plt.plot(X, y_true, linewidth=2, label="f verdadera", linestyle=":")
+
+for d in degrees:
+    model = make_pipeline(PolynomialFeatures(d), LinearRegression())
+    model.fit(X, y)
+    y_hat = model.predict(X)
+    plt.plot(X, y_hat, label=f"grado {d}")
+
+plt.legend()
+plt.title("Polinomios grado 1‑5 sobre datos sintéticos")
+plt.xlabel("X")
+plt.ylabel("y")
+plt.tight_layout()
+```
+
+### Interpretación rápida
+
+* **Grado 1–2**: líneas/curvas sencillas que no capturan la forma cúbica → **alto sesgo** → subajuste.
+* **Grado 3**: alinea bien con la función real; sesgo bajo y varianza moderada → buen equilibrio.
+* **Grado 4–5**: se ajusta demasiado al ruido → **varianza alta**, riesgo de *overfitting* → sobreajuste.
+
+### Subajuste y sobreajuste: diagnóstico visual
+
+Con las curvas anteriores ya cuentas con un punto de partida para identificar, **a simple vista**, los dos extremos indeseados del *trade‑off* sesgo‑varianza:
+
+| Situación                     | Señal visual                                                                                                                                           | Lectura conceptual                                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Subajuste (underfitting)**  | La curva predicha es demasiado rígida: no sigue la forma real del dato ni la de la función $f^{*}$. Su trayectoria es casi lineal o de poca curvatura. | **Sesgo alto** y **varianza baja**. El modelo es incapaz de captar la relación subyacente, aun con más datos.                                           |
+| **Sobreajuste (overfitting)** | La curva “serpentea”: pasa exactamente por casi todos los puntos de entrenamiento, incluyendo el ruido. Muestra oscilaciones bruscas.                  | **Sesgo bajo** y **varianza alta**. El modelo captura tanto la señal como el ruido, por lo que sus predicciones cambian drásticamente con nuevos datos. |
+
+> **Regla rápida**: Si solo miras los datos de entrenamiento y el ajuste parece *demasiado perfecto*, sospecha de sobreajuste; si el ajuste ignora claramente tendencias evidentes, sospecha de subajuste.
+
+En la práctica confirmamos estas señales comparando el **error de entrenamiento** con el **error de validación** o de un **conjunto de prueba**:
+
+* **Subajuste**: errores de entrenamiento y validación altos y próximos entre sí.
+* **Sobreajuste**: error de entrenamiento muy bajo y error de validación significativamente mayor.
+
+El ejemplo de polinomios grado 1–5 lo ilustra:
+
+* **Grados 1–2** → subajuste.
+* **Grado 3** → buen equilibrio.
+* **Grados 4–5** → sobreajuste.
+
+Usaremos estos criterios en las sesiones siguientes para diagnosticar modelos más complejos.
+
+
+---
+
+## Animación interactiva (opcional)
+
+Si dispones de Jupyter o Colab, ejecuta el siguiente fragmento para crear una animación que recorra los grados 1‑10.  Verás cómo la curva predicha "oscila" cada vez más conforme aumenta la complejidad.
+
+```{python}
+%matplotlib inline
+from matplotlib.animation import FuncAnimation, PillowWriter
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.scatter(X, y, alpha=.7)
+ax.plot(X, y_true, linestyle=":", label="f verdadera")
+line, = ax.plot([], [], lw=2)
+ax.set_ylim(min(y)-5, max(y)+5)
+ax.set_title("Sesgo‑Varianza en acción")
+ax.set_xlabel("X"); ax.set_ylabel("y")
+
+models = [make_pipeline(PolynomialFeatures(d), LinearRegression()).fit(X, y) for d in range(1, 11)]
+
+def animate(i):
+    y_hat = models[i].predict(X)
+    line.set_data(X.squeeze(), y_hat)
+    ax.legend([f"grado {i+1}"])
+    return line,
+
+ani = FuncAnimation(fig, animate, frames=len(models), interval=800, blit=True)
+# Descomenta para guardar como GIF
+# ani.save("sesgo_varianza.gif", writer=PillowWriter(fps=1))
+ani
+```
+
+En la salida HTML de Quarto aparecerá un reproductor de vídeo o un GIF animado (según entorno).  Observa cómo:
+
+* Los primeros grados subestiman la curvatura (sesgo).
+* Los últimos grados sobre‑oscilan (varianza).
+
+---
+
+## Ejercicio práctico
+
+1. Cambia la amplitud del ruido (`noise = 1.5 * …`). ¿Cómo se ve afectado el componente irreductible?
+2. Aumenta la muestra a 200 puntos y repite la animación.  ¿Disminuye la varianza?
+3. Calcula numéricamente **sesgo²** y **varianza** para cada modelo replicando el entrenamiento sobre 100 muestras de datos generadas con distinta semilla.  Compara la curva teórica con la visual.
+
+> Sube tus observaciones al repositorio del curso dentro de la carpeta `sesion01/`.
+
+---
+
+## Lista de comprobación
+
+* [ ] Explico con mis palabras qué representan $\sigma^2$, sesgo y varianza.
+* [ ] Identifico visualmente cuándo un modelo está subajustado o sobreajustado.
+* [ ] Genero y comparo polinomios de distintos grados en **scikit‑learn**.
+
+---
+
+### Recursos adicionales
+
+* Notebook completo: `sesgo‑varianza‑2D.ipynb`.
+* Vídeo flash: «Sesgo vs. Varianza en 3 minutos».
+* Lectura recomendada: *Hands‑On Machine Learning*, cap. 4 (Sección Bias‑Variance).

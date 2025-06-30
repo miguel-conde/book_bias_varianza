@@ -1,0 +1,14 @@
+# Prefacio
+
+Este libro nace de la necesidad de disponer de un compendio conciso pero riguroso sobre la **descomposición del error en modelos predictivos** y su relación práctica con *overfitting* y *underfitting*.  Su objetivo es servir como material de referencia y capacitación para un equipo con experiencia avanzada en *machine learning* que trabaja principalmente en **Python**.
+
+En las páginas que siguen encontraréis dos grandes apoyos:
+
+1. **Intuición antes que formulismo**. Cada explicación se apoya en visualizaciones y ejemplos numéricos antes de profundizar en la teoría.
+2. **Laboratorios reproducibles**. Todos los ejercicios se ejecutan en Jupyter/Colab con dependencias mínimas: `scikit‑learn`, `numpy`, `pandas` y `matplotlib`.
+
+El lector ideal posee ya nociones sólidas de estadística y programación, pero busca un puente entre la teoría clásica del sesgo‑varianza y la práctica diaria de ajustar y validar modelos.
+
+> *“La esencia del conocimiento consiste en aplicarlo.”* — Wang Yang‑ming
+
+

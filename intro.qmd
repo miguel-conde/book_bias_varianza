@@ -1,0 +1,23 @@
+# Introducción
+
+A continuación se muestra la estructura del minicurso. Cada sesión corresponde a un capítulo posterior del libro.
+
+| Sesión | Núcleo teórico (≤ 60 min)                                                                          | Laboratorio (≈ 30 min)                                                        | Entregable                          |
+| ------ | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
+| **1**  | Conceptos clave — Error esperado y desglose (irreductible, sesgo, varianza) con visualizaciones    | Animación: polinomios grado 1‑5 con `PolynomialFeatures` + `LinearRegression` | Notebook “sesgo‑varianza 2D”        |
+| **2**  | Visión geométrica — $\text{MSE}=\sigma^2 + \text{Bias}^2 + \text{Var}$ mediante ejemplos numéricos | Cálculo y visualización de cada término en dataset sintético con `numpy`      | Worksheet interactivo               |
+| **3**  | *Trade‑off* vivo — Curvas de aprendizaje/validación, tamaño de muestra y complejidad               | Generar 5 tamaños de muestra, graficar error *train* vs. *test*               | Plantilla de diagnóstico rápido     |
+| **4**  | Overfitting / Underfitting — Métricas, K‑fold CV, *data leakage*                                   | Árbol de decisión: variar `max_depth`, plot de errores                        | Checklist de síntomas               |
+| **5**  | Varianza: de dónde sale — Ruido, *splits*, aleatoriedad                                            | 50 splits con `KNeighborsRegressor`, boxplot                                  | Reporte HTML                        |
+| **6**  | Controlar varianza — Bagging, sub‑muestreo, regularización L2                                      | `RandomForestRegressor` vs. árbol único                                       | Script de *tuning* `n_estimators`   |
+| **7**  | Sesgo: fuentes y remedios — *Model bias* vs. *data bias*, *feature engineering*, boosting          | `GradientBoostingRegressor`: ajustar `learning_rate`, `max_depth`             | Guía de palancas para reducir sesgo |
+| **8**  | *Workflow* integral — Pipelines, búsqueda de hiperparámetros, stacking                             | Mini‑proyecto por parejas sobre dataset sintético realista                    | Slides + notebook final             |
+
+## Formatos y extras incluidos
+
+* **Notebooks interactivos** (Jupyter o Google Colab) con código autocontenible.
+* **Cheat‑sheet PDF** con fórmulas clave y diagramas de flujo.
+* **Vídeos flash** (\~5 min) para repasar la teoría de cada sesión.
+* **Proyecto final por parejas** en la Sesión 8, con rúbrica de evaluación transparente.
+
+Cada capítulo comienza recordando sus objetivos de aprendizaje y termina con una pequeña lista de comprobación para verificar la comprensión.  La secuencia está diseñada para que puedas avanzar linealmente o consultar capítulos específicos como referencia rápida.

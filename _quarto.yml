@@ -1,0 +1,27 @@
+project:
+  type: book
+
+book:
+  title: "Sesgo y Varianza"
+  subtitle: "Diagnóstico y control del error en modelado predictivo"
+  author: "Miguel Conde"
+  date: "6/30/2025"
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - sesion_1_conceptos_clave.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+  pdf:
+    documentclass: scrreprt
+
+
+
