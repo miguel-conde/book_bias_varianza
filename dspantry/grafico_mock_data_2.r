@@ -9,8 +9,8 @@ mean_squared_error <- function(x, y) {
 
 ### Generación datos mock
 make_mock_data <- function(
-    N = 100, alpha = 1, beta = 2, sigma_epsilon = 1.0,
-    sigma_x = 1.0, sigma_error_x= 0.0, seed = 2025
+    N = 100, alpha = 1, beta = 2, gamma = 3, sigma_epsilon = 1.0,
+    sigma_x = 1.0, sigma_z = 1.0, sigma_error_x= 0.0, seed = 2025
     ) {
 
         if (!is.null(seed)) {
@@ -18,24 +18,26 @@ make_mock_data <- function(
         }
 
         x <- rnorm(N, 0, sigma_x)
+        z <- rnorm(N, 0, sigma_z)
         x_hat <- rnorm(N, x, sigma_error_x)
-        y <- rnorm(N, alpha + beta*x, sigma_epsilon)
+        y <- rnorm(N, alpha + beta*x + gamma*z, sigma_epsilon)
 
         the_tibble = tibble(
             x = x,
+            z = z,
             x_hat = x_hat,
             y = y
         )
 
         m_0 <- lm(y ~ 1, the_tibble)
-        m_1x <- lm(y ~ x, the_tibble)
-        m_1x_hat <- lm(y ~ x_hat, the_tibble)
+        m_1x <- lm(y ~ x + z, the_tibble)
+        m_1x_hat <- lm(y ~ x_hat + z, the_tibble)
 
         the_tibble <- the_tibble %>%
             mutate(
             f_0 = predict(m_0, the_tibble),
             f_1x = predict(m_1x, the_tibble),
-            f_1x_x_hat = predict(m_1x, the_tibble %>% select(x = x_hat)),
+            f_1x_x_hat = predict(m_1x, the_tibble %>% select(x = x_hat, z)),
             f_1x_hat_x_hat = predict(m_1x_hat, the_tibble)
             )
 
@@ -94,7 +96,7 @@ legend("topright",
                   "MSE modelo con x",
                   "MSE modelo con x imputando x_hat",
                   "MSE modelo con x_hat"),
-       col = c("blue", "red", "green", "purple"), lty = 1)
+       col = c("blue", "red", "green"), lty = 1)
 
 res2 <- make_mock_data(sigma_error_x = sigmas_error_x[i])
 
@@ -105,19 +107,3 @@ mejora <- (res2$mse_0 - res2$mse_1x)
 umbral_mse <- (mejora / beta_hat^2)^.5
 
 umbral_mse
-
-plot(res[, "sigma_error_x"]^2, res[, "mse_0"],
-     type = "l", col = "blue",
-     xlab = "sigma_error_x^2", ylab = "MSE",
-     main = "MSE vs sigma_error_x^2",
-     xlim = c(0, max(res[, "sigma_error_x"]^2) + 0.1),
-     ylim = c(0, max(res[, c("mse_0", "mse_1x", "mse_1x_x_hat", "mse_1x_hat_x_hat")]) + 1))
-lines(res[, "sigma_error_x"]^2, res[, "mse_1x"], col = "red")
-lines(res[, "sigma_error_x"]^2, res[, "mse_1x_x_hat"], col = "green")
-lines(res[, "sigma_error_x"]^2, res[, "mse_1x_hat_x_hat"], col = "purple")
-legend("topright",
-       legend = c("MSE modelo sin x",
-                  "MSE modelo con x",
-                  "MSE modelo con x imputando x_hat",
-                  "MSE modelo con x_hat"),
-       col = c("blue", "red", "green", "purple"), lty = 1)
